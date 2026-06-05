@@ -23,13 +23,31 @@ app = modal.App("lore-cutclaw")
 
 # --- Image: Linux + ffmpeg + build tools + CutClaw deps -----------------------
 # madmom needs Cython+numpy at build time; pin numpy<2 first (madmom is old).
+# Verified working recipe (see modal_smoke.py): CutClaw's full stack builds + imports.
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install("ffmpeg", "git", "build-essential")
     .run_commands("git clone --depth 1 https://github.com/GVCLab/CutClaw.git /root/CutClaw")
-    .pip_install("numpy<2", "cython")                      # FLAG: madmom build prereqs
-    .run_commands("pip install -r /root/CutClaw/requirements.txt")  # FLAG: torch 2.8/decord/madmom build
+    .pip_install("cython", "numpy<2")
+    .run_commands("pip install -r /root/CutClaw/requirements.txt")
+    # requirements pull numpy 2.x back in → breaks madmom/aubio (numpy 1.x ABI). Pin last.
+    .run_commands("pip install --force-reinstall --no-deps 'numpy==1.26.4'")
+    # torchcodec native lib won't load and CutClaw decodes via decord → remove it.
+    .run_commands("pip uninstall -y torchcodec || true")
 )
+
+
+def _compat_shims():
+    """Re-add pre-3.10 collections aliases + pre-numpy-1.24 dtype aliases that madmom
+    and other old deps in CutClaw's stack still reference. Call before importing CutClaw."""
+    import collections, collections.abc, numpy as np
+    for _n in ("MutableSequence", "MutableMapping", "Mapping", "Sequence", "Callable", "Iterable"):
+        if not hasattr(collections, _n):
+            setattr(collections, _n, getattr(collections.abc, _n))
+    for _a, _t in (("float", float), ("int", int), ("bool", bool), ("object", object),
+                   ("complex", complex), ("str", str)):
+        if not hasattr(np, _a):
+            setattr(np, _a, _t)
 
 # Persistent storage for inputs (clips+music) and outputs (the render).
 vol = modal.Volume.from_name("lore-data", create_if_missing=True)
@@ -37,7 +55,7 @@ DATA = "/data"          # populate via `modal volume put lore-data ...` (see MOD
 OUT = "/data/Output"
 
 
-@app.function(image=image, gpu="L4", timeout=60 * 60,
+@app.function(image=image, gpu="L4", timeout=60 * 60, memory=16384,
               volumes={DATA: vol},
               secrets=[modal.Secret.from_name("openai")])
 def run_cutclaw(instruction: str, video_rel: str = "concat.mp4",
@@ -45,6 +63,7 @@ def run_cutclaw(instruction: str, video_rel: str = "concat.mp4",
                 total_shots: int = 80):
     """Run CutClaw (vlog/POV regime, protagonist off) on the uploaded footage."""
     import os, subprocess, sys
+    _compat_shims()
     os.chdir("/root/CutClaw")
     sys.path.insert(0, "/root/CutClaw")
 

@@ -56,8 +56,15 @@ cd ../..
 ./.venv/bin/modal volume get lore-data Output ./modal_out
 ```
 
-## Flagged iteration points (expected on first run)
-1. **Image build** — `madmom` (Cython/numpy<2) and `decord`/`torch==2.8.0` are the likely build failures; the image pins `numpy<2 cython` first. Adjust if the build errors.
-2. **Audio model routing** — CutClaw's `AUDIO_LITELLM_MODEL` expects an audio-understanding model (Qwen3-Omni) for music-structure captioning; `openai/gpt-4o` may need a text-only fallback path. The madmom beat/downbeat detection itself is local DSP and unaffected.
-3. **Config override plumbing** — confirm `--config.X` reaches the OpenAI-compatible client code (endpoint + key) as expected; `src/config.py` reads these but verify the LiteLLM client honors them.
-4. **GPU tier** — `L4` is a cheap default; bump if pyannote/decode is slow. ASR-for-names is skipped on the vlog path, so diarization/HF-token isn't needed.
+## Build: VERIFIED ✅ (see `modal_smoke.py`)
+CutClaw's full stack builds and imports on Modal (config, Screenwriter, core, Reviewer + madmom/torch/decord/aubio/scenedetect). Non-obvious fixes, baked into `modal_app.py`:
+- **numpy**: requirements pull numpy 2.x → breaks madmom (ImportError) + aubio (SIGSEGV); both need the numpy 1.x ABI. Force `numpy==1.26.4` as the **last** pip layer.
+- **torchcodec**: pulled transitively, native lib won't load and raises on import. CutClaw decodes with **decord**, so `pip uninstall -y torchcodec`.
+- **runtime shims** (`_compat_shims()`): re-add pre-3.10 `collections` aliases + pre-numpy-1.24 dtype aliases (`np.float` etc.) before importing CutClaw.
+- **pyannote.audio** fails on `libcudart.so.13` — diarization only, which the vlog/POV path skips. Not on our path.
+- Container needs `memory=16384`.
+
+## Still to verify on the first real RUN
+1. **Audio model routing** — `AUDIO_LITELLM_MODEL` expects an audio model (Qwen3-Omni); `openai/gpt-4o` may need a text-only fallback. madmom beat/downbeat DSP is local and unaffected.
+2. **Config override plumbing** — confirm `--config.X` reaches the OpenAI-compatible client (endpoint + key).
+3. **Hybrid input** — feed CutClaw our worthiness-selected clips (concatenated), not the full archive.
