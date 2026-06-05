@@ -32,6 +32,11 @@ def beat_grid(music: str, target_s: float, beats_per_cut: int) -> list[float]:
         beats = [b for b in beats if b <= target_s]
     # slot boundaries every `beats_per_cut` beats
     bounds = beats[::beats_per_cut]
+    # robustness: if beat detection/load hiccups (too few beats), fall back to a
+    # uniform ~2s grid so we never crash on an empty list.
+    if len(bounds) < 2:
+        end = target_s if (target_s and target_s > 0) else len(y) / sr
+        bounds = [i * 2.0 for i in range(max(2, int(end // 2) + 1))]
     if bounds[0] > 0.05:
         bounds = [0.0] + bounds
     return bounds
