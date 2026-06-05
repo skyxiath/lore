@@ -1,0 +1,399 @@
+{
+  "n_clips": 40,
+  "total_footage_s": 3303.1,
+  "capture_span_hours": 8.92,
+  "start": "2026-04-19T15:31:05",
+  "end": "2026-04-20T00:26:34",
+  "chapter_gap_min": 25.0,
+  "n_chapters": 3,
+  "all_have_audio": true,
+  "chapters": [
+    {
+      "index": 0,
+      "start": "2026-04-19T15:31:05",
+      "end": "2026-04-19T20:32:18",
+      "n_clips": 27,
+      "duration_s": 2355.9,
+      "clips": [
+        {
+          "file": "VID_20260419_153105_034.mp4",
+          "timestamp": "2026-04-19T15:31:05",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 0.0,
+          "offset_from_start_s": 0.0
+        },
+        {
+          "file": "VID_20260419_154210_035.mp4",
+          "timestamp": "2026-04-19T15:42:10",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 665.0
+        },
+        {
+          "file": "VID_20260419_155315_036.mp4",
+          "timestamp": "2026-04-19T15:53:15",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 1330.0
+        },
+        {
+          "file": "VID_20260419_160420_037.mp4",
+          "timestamp": "2026-04-19T16:04:20",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 1995.0
+        },
+        {
+          "file": "VID_20260419_161525_038.mp4",
+          "timestamp": "2026-04-19T16:15:25",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 2660.0
+        },
+        {
+          "file": "VID_20260419_163058_039.mp4",
+          "timestamp": "2026-04-19T16:30:58",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 15.6,
+          "offset_from_start_s": 3593.0
+        },
+        {
+          "file": "VID_20260419_164201_040.mp4",
+          "timestamp": "2026-04-19T16:42:01",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 4256.0
+        },
+        {
+          "file": "VID_20260419_165304_041.mp4",
+          "timestamp": "2026-04-19T16:53:04",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 4919.0
+        },
+        {
+          "file": "VID_20260419_170407_042.mp4",
+          "timestamp": "2026-04-19T17:04:07",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 5582.0
+        },
+        {
+          "file": "VID_20260419_171511_043.mp4",
+          "timestamp": "2026-04-19T17:15:11",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 6246.0
+        },
+        {
+          "file": "VID_20260419_172616_044.mp4",
+          "timestamp": "2026-04-19T17:26:16",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 6911.0
+        },
+        {
+          "file": "VID_20260419_173721_045.mp4",
+          "timestamp": "2026-04-19T17:37:21",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 7576.0
+        },
+        {
+          "file": "VID_20260419_174824_046.mp4",
+          "timestamp": "2026-04-19T17:48:24",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 8239.0
+        },
+        {
+          "file": "VID_20260419_175927_047.mp4",
+          "timestamp": "2026-04-19T17:59:27",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 8902.0
+        },
+        {
+          "file": "VID_20260419_181031_048.mp4",
+          "timestamp": "2026-04-19T18:10:31",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 9566.0
+        },
+        {
+          "file": "VID_20260419_182131_049.mp4",
+          "timestamp": "2026-04-19T18:21:31",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.0,
+          "offset_from_start_s": 10226.0
+        },
+        {
+          "file": "VID_20260419_184233_050.mp4",
+          "timestamp": "2026-04-19T18:42:33",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 21.0,
+          "offset_from_start_s": 11488.0
+        },
+        {
+          "file": "VID_20260419_185337_051.mp4",
+          "timestamp": "2026-04-19T18:53:37",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 12152.0
+        },
+        {
+          "file": "VID_20260419_190439_052.mp4",
+          "timestamp": "2026-04-19T19:04:39",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.0,
+          "offset_from_start_s": 12814.0
+        },
+        {
+          "file": "VID_20260419_191543_053.mp4",
+          "timestamp": "2026-04-19T19:15:43",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 13478.0
+        },
+        {
+          "file": "VID_20260419_192649_054.mp4",
+          "timestamp": "2026-04-19T19:26:49",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 14144.0
+        },
+        {
+          "file": "VID_20260419_193754_055.mp4",
+          "timestamp": "2026-04-19T19:37:54",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 14809.0
+        },
+        {
+          "file": "VID_20260419_194205_056.mp4",
+          "timestamp": "2026-04-19T19:42:05",
+          "duration_s": 126.3,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 4.2,
+          "offset_from_start_s": 15060.0
+        },
+        {
+          "file": "VID_20260419_195419_057.mp4",
+          "timestamp": "2026-04-19T19:54:19",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 12.2,
+          "offset_from_start_s": 15794.0
+        },
+        {
+          "file": "VID_20260419_200354_058.mp4",
+          "timestamp": "2026-04-19T20:03:54",
+          "duration_s": 295.8,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 9.6,
+          "offset_from_start_s": 16369.0
+        },
+        {
+          "file": "VID_20260419_201852_059.mp4",
+          "timestamp": "2026-04-19T20:18:52",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 15.0,
+          "offset_from_start_s": 17267.0
+        },
+        {
+          "file": "VID_20260419_203218_060.mp4",
+          "timestamp": "2026-04-19T20:32:18",
+          "duration_s": 491.4,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 13.4,
+          "offset_from_start_s": 18073.0
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "start": "2026-04-19T22:06:53",
+      "end": "2026-04-19T22:06:53",
+      "n_clips": 1,
+      "duration_s": 246.2,
+      "clips": [
+        {
+          "file": "VID_20260419_220653_061.mp4",
+          "timestamp": "2026-04-19T22:06:53",
+          "duration_s": 246.2,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 94.6,
+          "offset_from_start_s": 23748.0
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "start": "2026-04-19T22:33:54",
+      "end": "2026-04-20T00:26:34",
+      "n_clips": 12,
+      "duration_s": 701.0,
+      "clips": [
+        {
+          "file": "VID_20260419_223354_062.mp4",
+          "timestamp": "2026-04-19T22:33:54",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 27.0,
+          "offset_from_start_s": 25369.0
+        },
+        {
+          "file": "VID_20260419_224458_063.mp4",
+          "timestamp": "2026-04-19T22:44:58",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 26033.0
+        },
+        {
+          "file": "VID_20260419_225253_064.mp4",
+          "timestamp": "2026-04-19T22:52:53",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 7.9,
+          "offset_from_start_s": 26508.0
+        },
+        {
+          "file": "VID_20260419_230357_065.mp4",
+          "timestamp": "2026-04-19T23:03:57",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 27172.0
+        },
+        {
+          "file": "VID_20260419_231459_066.mp4",
+          "timestamp": "2026-04-19T23:14:59",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.0,
+          "offset_from_start_s": 27834.0
+        },
+        {
+          "file": "VID_20260419_232600_067.mp4",
+          "timestamp": "2026-04-19T23:26:00",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.0,
+          "offset_from_start_s": 28495.0
+        },
+        {
+          "file": "VID_20260419_233705_068.mp4",
+          "timestamp": "2026-04-19T23:37:05",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 29160.0
+        },
+        {
+          "file": "VID_20260419_234240_069.mp4",
+          "timestamp": "2026-04-19T23:42:40",
+          "duration_s": 39.9,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 5.6,
+          "offset_from_start_s": 29495.0
+        },
+        {
+          "file": "VID_20260419_235319_070.mp4",
+          "timestamp": "2026-04-19T23:53:19",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 10.7,
+          "offset_from_start_s": 30134.0
+        },
+        {
+          "file": "VID_20260420_000424_071.mp4",
+          "timestamp": "2026-04-20T00:04:24",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 30799.0
+        },
+        {
+          "file": "VID_20260420_001529_072.mp4",
+          "timestamp": "2026-04-20T00:15:29",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 31464.0
+        },
+        {
+          "file": "VID_20260420_002634_073.mp4",
+          "timestamp": "2026-04-20T00:26:34",
+          "duration_s": 60.1,
+          "has_audio": true,
+          "resolution": "3840x2160",
+          "gap_to_prev_min": 11.1,
+          "offset_from_start_s": 32129.0
+        }
+      ]
+    }
+  ]
+}

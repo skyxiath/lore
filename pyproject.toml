@@ -1,0 +1,24 @@
+[project]
+name = "lore"
+version = "0.0.1"
+description = "Lore — music-synced editing of raw lifestyle footage (POV / smart-glasses / interval), built on CutClaw"
+requires-python = ">=3.11"
+# Heavy deps (torch, madmom, pyannote, decord, open_clip, etc.) come from
+# external/CutClaw/requirements.txt + Lore extras — installed per BUILD.md, NOT here,
+# so that `lore plan --dry-run` stays importable with the stdlib alone.
+dependencies = []
+
+[project.optional-dependencies]
+# Lore-specific additions on top of CutClaw's requirements.
+gate = ["open_clip_torch", "laion-clap", "librosa", "scikit-learn"]
+metadata = ["gpmf", "projectaria-tools"]
+
+[project.scripts]
+lore = "lore.pipeline:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["lore", "lore.metadata", "lore.segmentation", "lore.worthiness", "lore.compose"]

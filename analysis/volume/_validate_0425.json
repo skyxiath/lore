@@ -1,0 +1,61 @@
+{
+  "music": "",
+  "music_duration_s": 0.0,
+  "instruction": "",
+  "model": "gpt-4o",
+  "n_clips": 4,
+  "clips": [
+    {
+      "activity": "walking through hallway",
+      "place": "hallway",
+      "caption": "Quietly walking through a colorful hallway out into a fresh outdoor path.",
+      "worthiness": 0.4,
+      "worthiness_reason": "The clip shows a simple action of moving through a hallway to an outdoor area, but lacks a key moment of interest or any interactions. It's a transition rather than a peak moment.",
+      "has_meaningful_speech": false,
+      "notable_audio": "",
+      "file": "LRV_20260425_144045_075.lrv",
+      "timestamp": "2026-04-25T14:40:45",
+      "duration_s": 90.1,
+      "transcript": ""
+    },
+    {
+      "activity": "walking",
+      "place": "forest path",
+      "caption": "A serene walk along a lush forest path transitions to a roadside view, capturing the peaceful solitude of nature.",
+      "worthiness": 0.5,
+      "worthiness_reason": "The clip captures a scenic transition from a quiet forest path to a roadside, offering a serene, picturesque moment suitable for a nature-themed segment of a day recap. However, the lack of dynamic elements or interaction makes it less engaging than more active or social moments.",
+      "has_meaningful_speech": false,
+      "notable_audio": "",
+      "file": "LRV_20260425_161414_092.lrv",
+      "timestamp": "2026-04-25T16:14:14",
+      "duration_s": 85.1,
+      "transcript": ""
+    },
+    {
+      "activity": "reading sign",
+      "place": "park entrance",
+      "caption": "A cyclist pauses to read a sign at a gated park entrance, with surrounding trees hinting at an adventure ahead.",
+      "worthiness": 0.3,
+      "worthiness_reason": "The clip captures a mundane moment of reading a sign, which doesn\u2019t offer strong visual or narrative impact for a highlight reel. The lack of audio or notable action lessens its appeal.",
+      "has_meaningful_speech": false,
+      "notable_audio": "",
+      "file": "LRV_20260425_173306_109.lrv",
+      "timestamp": "2026-04-25T17:33:06",
+      "duration_s": 161.5,
+      "transcript": ""
+    },
+    {
+      "activity": "entering dorm room",
+      "place": "dorm hallway",
+      "caption": "A quiet hallway leads to the personal haven of a dorm room as the door swings open, revealing a cozy interior.",
+      "worthiness": 0.3,
+      "worthiness_reason": "The clip captures a transition from a hallway to entering a room, but lacks dynamic action or scenic value to make it highly memorable.",
+      "has_meaningful_speech": false,
+      "notable_audio": "",
+      "file": "LRV_20260425_193023_126.lrv",
+      "timestamp": "2026-04-25T19:30:23",
+      "duration_s": 39.3,
+      "transcript": ""
+    }
+  ]
+}

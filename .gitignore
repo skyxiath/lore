@@ -1,0 +1,30 @@
+# Vendored upstream (re-clone via BUILD.md; not tracked in Lore's repo)
+external/
+
+# CutClaw / Lore runtime outputs
+Output/
+Dataset/
+*.mp4
+*.mkv
+*.mov
+*.mp3
+*.wav
+*.srt
+
+# Generated image artifacts (montages, contact sheets — regenerable)
+*.png
+*.jpg
+*.jpeg
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
