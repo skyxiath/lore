@@ -34,6 +34,10 @@ image = (
     .run_commands("pip install --force-reinstall --no-deps 'numpy==1.26.4'")
     # torchcodec native lib won't load and CutClaw decodes via decord → remove it.
     .run_commands("pip uninstall -y torchcodec || true")
+    # Source patches to upstream CutClaw (stray-'w' IndentationError; audio image_url →
+    # input_audio for OpenAI gpt-audio). Last layers so the heavy pip layers stay cached.
+    .add_local_file("patches/cutclaw_patches.py", "/root/cutclaw_patches.py", copy=True)
+    .run_commands("python /root/cutclaw_patches.py /root/CutClaw")
 )
 
 
@@ -72,6 +76,18 @@ def run_cutclaw(instruction: str, video_rel: str = "concat.mp4",
     assert os.path.exists(video), f"missing {video} — upload via modal volume put"
     assert os.path.exists(music), f"missing {music}"
 
+    # CutClaw's content-based AdaptiveDetector finds ~0 cuts on a homogeneous concat of
+    # our worthy clips. We made the concat, so we know the cuts: seed shot_scenes.txt
+    # (CutClaw skips detection when it exists). Upload <vid>_shots.txt alongside the video.
+    import shutil
+    vid = os.path.splitext(os.path.basename(video))[0]
+    shots_src = os.path.join(DATA, f"{vid}_shots.txt")
+    if os.path.exists(shots_src):
+        frames_dir = os.path.join(OUT, "Video", vid, "frames")
+        os.makedirs(frames_dir, exist_ok=True)
+        shutil.copy(shots_src, os.path.join(frames_dir, "shot_scenes.txt"))
+        print(f"[lore] seeded {sum(1 for _ in open(shots_src))} shot boundaries → shot_scenes.txt")
+
     # Route CutClaw's 3 LiteLLM endpoints to OpenAI. FLAG: AUDIO model expects an
     # audio-understanding model (Qwen3-Omni); gpt-4o may need a text-only fallback
     # for music-structure captioning — verify on first run.
@@ -81,17 +97,24 @@ def run_cutclaw(instruction: str, video_rel: str = "concat.mp4",
         "MAIN_CHARACTER_NAME": "",            # gut protagonist
         "ENABLE_FACE_QUALITY_CHECK": "False",
         "ENABLE_TRIM_SHOT_CHARACTER_ANALYSIS": "False",
-        "VIDEO_ANALYSIS_MODEL": "openai/gpt-4o",
+        # gpt-4o-mini for the image-heavy calls: this account is Tier-1 (gpt-4o = 30K TPM,
+        # but image requests need ~46K); mini has far higher TPM and is cheaper.
+        "VIDEO_ANALYSIS_MODEL": "openai/gpt-4o-mini",
         "VIDEO_ANALYSIS_ENDPOINT": "https://api.openai.com/v1",
         "VIDEO_ANALYSIS_API_KEY": os.environ["OPENAI_API_KEY"],
-        "AGENT_LITELLM_MODEL": "openai/gpt-4o",
+        "AGENT_LITELLM_MODEL": "openai/gpt-4o-mini",
         "AGENT_LITELLM_URL": "https://api.openai.com/v1",
         "AGENT_LITELLM_API_KEY": os.environ["OPENAI_API_KEY"],
-        "AUDIO_LITELLM_MODEL": "openai/gpt-4o",   # FLAG (see above)
+        "AUDIO_LITELLM_MODEL": "openai/gpt-audio-mini",  # audio-INPUT model (plain gpt-4o can't take audio)
         "AUDIO_LITELLM_BASE_URL": "https://api.openai.com/v1",
         "AUDIO_LITELLM_API_KEY": os.environ["OPENAI_API_KEY"],
         "ASR_BACKEND": "litellm",
         "AUDIO_TOTAL_SHOTS": str(total_shots),
+        "CORE_MAX_FRAMES": "24",   # cap frames/Editor call (TPM + cost)
+        # Caption requests were ~46K tokens each × 64 parallel → saturated even mini's
+        # 200K TPM. Halve frames/request (VIDEO_FPS) and throttle parallelism.
+        "VIDEO_FPS": "1",
+        "CAPTION_BATCH_SIZE": "6",
     }
     if max_minutes:
         cfg["VIDEO_MAX_MINUTES"] = str(max_minutes)
@@ -100,16 +123,22 @@ def run_cutclaw(instruction: str, video_rel: str = "concat.mp4",
            "--Video_Path", video, "--Audio_Path", music, "--Instruction", instruction]
     for k, v in cfg.items():
         cmd += [f"--config.{k}", str(v)]
+    # src/audio/litellm_client.py reads model/key/base_url from THESE env vars at import
+    # time (before --config overrides apply), so set them directly or it uses key "EMPTY".
+    env = os.environ.copy()
+    env["AUDIO_MODEL"] = "openai/gpt-audio-mini"
+    env["AUDIO_API_KEY"] = os.environ["OPENAI_API_KEY"]
+    env["AUDIO_BASE_URL"] = "https://api.openai.com/v1"
     print("RUN:", " ".join(cmd[:8]), "... (+%d config overrides)" % len(cfg))
-    rc = subprocess.run(cmd).returncode
+    rc = subprocess.run(cmd, env=env).returncode
     vol.commit()
     return {"returncode": rc, "output_dir": OUT}
 
 
 @app.local_entrypoint()
 def main(instruction: str = "A day out, from afternoon light into night",
+         video_rel: str = "concat.mp4", music_rel: str = "Frisky.mp3",
          max_minutes: int = 0, total_shots: int = 80):
-    res = run_cutclaw.remote(instruction=instruction,
-                             max_minutes=(max_minutes or None),
-                             total_shots=total_shots)
+    res = run_cutclaw.remote(instruction=instruction, video_rel=video_rel, music_rel=music_rel,
+                             max_minutes=(max_minutes or None), total_shots=total_shots)
     print("done:", res)
