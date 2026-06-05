@@ -1,0 +1,19 @@
+{
+  "recap": "2026-01-18_recap.mp4",
+  "duration_s": 55.1,
+  "av_harmony": {
+    "n_cuts": 7,
+    "n_beats": 98,
+    "mean_offset_s": 0.102,
+    "median_offset_s": 0.111,
+    "pct_within_0.1s": 42.9,
+    "av_harmony_score": 42.9
+  },
+  "mllm_judge": {
+    "visual_quality": 8,
+    "narrative_coherence": 7,
+    "instruction_following": 9,
+    "human_likeness": 8,
+    "notes": "The sequence effectively captures the progression of a waterfall hike. Visual quality is strong, showing varied terrain and the destination waterfall clearly. Some frames seem disconnected from the sense of progression, slightly affecting coherence. Overall, it follows the instruction well and is competently edited."
+  }
+}
