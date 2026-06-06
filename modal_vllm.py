@@ -19,7 +19,10 @@ app = modal.App("lore-qwen3vl")
 image = (
     modal.Image.debian_slim(python_version="3.12")
     .pip_install("vllm>=0.11.0", "huggingface_hub[hf_transfer]", "qwen-vl-utils")
-    .env({"HF_HUB_ENABLE_HF_TRANSFER": "1", "VLLM_USE_V1": "1"})
+    # Force Triton fused-MoE: the default flashinfer CUTLASS MoE JIT-compiles at startup
+    # (needs nvcc, absent from the wheel) and hung for hours. Triton needs no nvcc.
+    .env({"HF_HUB_ENABLE_HF_TRANSFER": "1", "VLLM_USE_V1": "1",
+          "VLLM_USE_FLASHINFER_MOE_FP16": "0", "VLLM_USE_FLASHINFER_MOE_FP8": "0"})
 )
 
 hf_cache = modal.Volume.from_name("hf-cache", create_if_missing=True)
@@ -45,6 +48,7 @@ def serve():
         " --max-model-len 32768"
         " --limit-mm-per-prompt '{\"image\":32}'"   # CutClaw sends many frames/caption
         " --gpu-memory-utilization 0.92"
+        " --enforce-eager"   # skip CUDA-graph capture → faster, more reliable startup
     )
     print("launching:", cmd, flush=True)
     subprocess.Popen(cmd, shell=True)
