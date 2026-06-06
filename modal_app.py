@@ -34,6 +34,8 @@ image = (
     .run_commands("pip install --force-reinstall --no-deps 'numpy==1.26.4'")
     # torchcodec native lib won't load and CutClaw decodes via decord → remove it.
     .run_commands("pip uninstall -y torchcodec || true")
+    # boto3 for LiteLLM→Bedrock auth (CutClaw's reqs omit it; it was OpenAI/Qwen-only).
+    .pip_install("boto3")
     # Source patches to upstream CutClaw (stray-'w' IndentationError; audio image_url →
     # input_audio for OpenAI gpt-audio). Last layers so the heavy pip layers stay cached.
     .add_local_file("patches/cutclaw_patches.py", "/root/cutclaw_patches.py", copy=True)
@@ -58,10 +60,14 @@ vol = modal.Volume.from_name("lore-data", create_if_missing=True)
 DATA = "/data"          # populate via `modal volume put lore-data ...` (see MODAL.md)
 OUT = "/data/Output"
 
+# Self-hosted Qwen3-VL (modal_vllm.py) — the model CutClaw was actually built for.
+VLLM_URL = "https://skyxiath--lore-qwen3vl-serve.modal.run/v1"
+VLLM_KEY = "lore-vllm-key"
+
 
 @app.function(image=image, gpu="L4", timeout=60 * 60, memory=16384,
               volumes={DATA: vol},
-              secrets=[modal.Secret.from_name("openai")])
+              secrets=[modal.Secret.from_name("openai"), modal.Secret.from_name("aws")])
 def run_cutclaw(instruction: str, video_rel: str = "concat.mp4",
                 music_rel: str = "Frisky.mp3", max_minutes: int | None = None,
                 total_shots: int = 80):
@@ -97,14 +103,14 @@ def run_cutclaw(instruction: str, video_rel: str = "concat.mp4",
         "MAIN_CHARACTER_NAME": "",            # gut protagonist
         "ENABLE_FACE_QUALITY_CHECK": "False",
         "ENABLE_TRIM_SHOT_CHARACTER_ANALYSIS": "False",
-        # gpt-4o-mini for the image-heavy calls: this account is Tier-1 (gpt-4o = 30K TPM,
-        # but image requests need ~46K); mini has far higher TPM and is cheaper.
-        "VIDEO_ANALYSIS_MODEL": "openai/gpt-4o-mini",
-        "VIDEO_ANALYSIS_ENDPOINT": "https://api.openai.com/v1",
-        "VIDEO_ANALYSIS_API_KEY": os.environ["OPENAI_API_KEY"],
-        "AGENT_LITELLM_MODEL": "openai/gpt-4o-mini",
-        "AGENT_LITELLM_URL": "https://api.openai.com/v1",
-        "AGENT_LITELLM_API_KEY": os.environ["OPENAI_API_KEY"],
+        # The captioner + agent both run on our self-hosted Qwen3-VL (the intended model),
+        # via its OpenAI-compatible vLLM endpoint. No external rate limits.
+        "VIDEO_ANALYSIS_MODEL": "openai/Qwen3-VL",
+        "VIDEO_ANALYSIS_ENDPOINT": VLLM_URL,
+        "VIDEO_ANALYSIS_API_KEY": VLLM_KEY,
+        "AGENT_LITELLM_MODEL": "openai/Qwen3-VL",
+        "AGENT_LITELLM_URL": VLLM_URL,
+        "AGENT_LITELLM_API_KEY": VLLM_KEY,
         "AUDIO_LITELLM_MODEL": "openai/gpt-audio-mini",  # audio-INPUT model (plain gpt-4o can't take audio)
         "AUDIO_LITELLM_BASE_URL": "https://api.openai.com/v1",
         "AUDIO_LITELLM_API_KEY": os.environ["OPENAI_API_KEY"],
@@ -114,7 +120,7 @@ def run_cutclaw(instruction: str, video_rel: str = "concat.mp4",
         # Caption requests were ~46K tokens each × 64 parallel → saturated even mini's
         # 200K TPM. Halve frames/request (VIDEO_FPS) and throttle parallelism.
         "VIDEO_FPS": "1",
-        "CAPTION_BATCH_SIZE": "6",
+        "CAPTION_BATCH_SIZE": "12",   # Bedrock Nova has high throughput; can parallelize more
     }
     if max_minutes:
         cfg["VIDEO_MAX_MINUTES"] = str(max_minutes)
@@ -129,6 +135,10 @@ def run_cutclaw(instruction: str, video_rel: str = "concat.mp4",
     env["AUDIO_MODEL"] = "openai/gpt-audio-mini"
     env["AUDIO_API_KEY"] = os.environ["OPENAI_API_KEY"]
     env["AUDIO_BASE_URL"] = "https://api.openai.com/v1"
+    # Bedrock auth for LiteLLM/boto3 (the access key + secret come from the 'aws' secret).
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION") or "us-east-1"
+    env["AWS_REGION_NAME"] = region
+    env["AWS_DEFAULT_REGION"] = region
     print("RUN:", " ".join(cmd[:8]), "... (+%d config overrides)" % len(cfg))
     rc = subprocess.run(cmd, env=env).returncode
     vol.commit()
