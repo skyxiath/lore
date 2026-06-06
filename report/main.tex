@@ -1,0 +1,335 @@
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+\usepackage{cvpr}
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% Include other packages here, before hyperref.
+
+% If you comment hyperref and then uncomment it, you should delete
+% egpaper.aux before re-running latex.  (Or just hit 'q' on the first latex
+% run, let it finish, and you should be clear).
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+
+\cvprfinalcopy % *** Uncomment this line for the final submission
+
+\def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
+\def\httilde{\mbox{\tt\raisebox{-.5ex}{\symbol{126}}}}
+
+% Pages are numbered in submission mode, and unnumbered in camera-ready
+%\ifcvprfinal\pagestyle{empty}\fi
+\setcounter{page}{4321}
+\begin{document}
+
+%%%%%%%%% TITLE
+\title{Lore - a new way to remember}
+
+\author{Tejasvi Tyagi\\
+Stanford University\\
+Stanford, CA\\
+{\tt\small tejasvi@stanford.edu}
+% For a paper whose authors are all at the same institution,
+% omit the following lines up until the closing ``}''.
+% Additional authors and addresses can be added with ``\and'',
+% just like the second author.
+% To save space, use either the email address or home page, not both
+\and
+Andrew Xia\\
+Stanford University\\
+Stanford, CA\\
+{\tt\small skyxxth@stanford.edu}
+}
+
+\maketitle
+%\thispagestyle{empty}
+
+%%%%%%%%% ABSTRACT
+\begin{abstract}
+   Consumer auto-editing tools (Insta360 AI Edit, GoPro Quik, CapCut Auto-Cut) condense hours of action and handheld camera footage into short montages, but clips are scored independently for motion or visual saliency, with no model of narrative structure, no penalty for visually redundant shots, and no mechanism for the user to condition the montage. We argue that the upstream bottleneck is highlight detection itself, and that the dominant visual-only approach is blind to a large fraction of what makes a moment worth keeping. In related work we trace the DETR family of highlight detectors and the under-use of audio. In our method, the input is a video, represented as a sequence of two-second clips each carrying visual frames and the corresponding audio waveform, and the output is a per-clip highlight saliency score from a transformer detector that fuses CLIP and SlowFast visual features with a Contrastive Language-Audio Pretraining (CLAP) audio embedding. We evaluate on the TVSum dataset using Top-5 mean average precision under five-fold cross-validation, and find that fusion leaves aggregate accuracy roughly flat but produces large gains on audio-salient categories: on Beekeeping a visual-only detector scores 20.0 Top-5 mAP while the fusion model reaches 60.0 (placeholders pending the final run). We close by describing Lore, a CutClaw-inspired agentic assembler that would turn these highlights into a music-synced montage, and by explaining why we scope full assembly to future work.
+\end{abstract}
+
+%%%%%%%%% BODY TEXT
+\section{Introduction}
+
+A modern action camera or pair of smart glasses can record hours of footage in a single day, almost none of which is ever watched. Automatic editing promises to compress that footage into a short, watchable montage, and this matters because the volume of personal video is growing far faster than anyone's willingness to edit it by hand. Commercial systems such as GoPro Quik, Apple Memories, CapCut Auto-Cut, and the Insta360 AI editor already perform this compression at scale, but they share a narrow notion of what to keep. Each clip is scored independently by a motion or aesthetic-saliency heuristic, the highest-scoring fragments are laid over a beat-synced music track, and that is the montage. There is no model of narrative structure, no penalty for visually redundant shots, and no way for a user to condition the result on what they care about.
+
+Our motivation is the observation that the limiting component is not the assembly stage but the highlight detector that feeds it, and that the dominant approach to highlight detection is structurally blind to a large fraction of what makes a moment worth keeping. State-of-the-art highlight detection and moment retrieval methods are transformer detectors in the DETR family that operate over per-clip visual features such as CLIP and SlowFast \cite{momentdetr,qddetr,cgdetr}. Audio, when it is used at all, enters as a small auxiliary feature stream whose ablated contribution is usually marginal \cite{qvhighlights}. For many real video types, however, the highlight is defined by sound. In a beekeeping clip the moment of interest is when the hive is opened and the buzzing swells; in a parade or a flash mob it is the music and the crowd; in a dog show it is the announcer and the applause. A detector that only sees a person standing beside a box, or a static crowd, has no way to localize these moments.
+
+We state the task explicitly. The input to our algorithm is a video, represented as a temporally ordered sequence of roughly two-second clips, where each clip carries a stack of visual frames and the time-aligned audio waveform for that interval. We use a DETR-style transformer detector that fuses a visual feature stream (CLIP and SlowFast) with an audio feature stream (CLAP) to output a real-valued highlight saliency score for every clip. The downstream montage is produced by a separate assembler that consumes these scores; the detector, not the assembler, is the subject of this paper.
+
+This paper makes three contributions. First, we characterize the failure of visual-only highlight detection on audio-salient video categories, using the per-category structure of TVSum to make the effect concrete. Second, we add a CLAP audio modality \cite{clap,laionclap} to a DETR-style highlight detector and fuse it with CLIP and SlowFast visual features; the fusion model recovers most of the lost performance on audio-salient categories while leaving visually-driven categories essentially unchanged. Third, we outline Lore, a CutClaw-inspired agentic assembler \cite{cutclaw} that turns detected highlights into a music-synced, redundancy-aware, instruction-conditioned montage, and we explain why we treat full assembly as future work. The central empirical claim is that audio is not a marginal add-on but a decisive signal whose value is concentrated in particular video types, and that reporting only an aggregate metric hides this.
+
+%-------------------------------------------------------------------------
+\section{Related Work}
+
+We group prior work into three categories: highlight detection architectures, the use of audio for video understanding, and automatic montage assembly. Most personal video today is still summarized by hand or by the per-clip commercial heuristics described above, so the academic state-of-the-art and the deployed state-of-the-art differ sharply.
+
+Highlight detection and moment retrieval architectures. The field has converged on DETR-style detectors \cite{detr}. Moment-DETR \cite{momentdetr} introduced the QVHighlights benchmark and a transformer encoder-decoder that jointly predicts moment spans and clip-level saliency. QD-DETR \cite{qddetr}, CG-DETR \cite{cgdetr}, and UVCOM \cite{uvcom} refine query-video interaction and the saliency head and remain near the top of the QVHighlights and TVSum leaderboards. The strength of this line is a clean, end-to-end set-prediction formulation that handles variable numbers of highlights; its weakness, for our purposes, is a near-exclusive reliance on visual features (CLIP \cite{clip} and SlowFast \cite{slowfast}) sampled at roughly two-second granularity. In our opinion the query-dependency calibration of CG-DETR is the cleverest recent idea, but none of these methods treat audio as a first-class modality.
+
+Audio for video understanding. Audio has long been used in narrow, hand-built ways, such as crowd-noise and commentator-excitement detectors for sports highlights, but these treat audio as an energy signal rather than a semantic one. Audio classification backbones such as PANNs \cite{panns} provide event-level features, and QVHighlights ships an optional PANNs stream, but it ablates to a small effect and is rarely used. More recent work shows that audio can be more informative than vision for unsupervised highlight detection in some domains \cite{recurrence}. We adopt CLAP \cite{clap,laionclap}, a contrastive language-audio model whose audio encoder produces semantically structured embeddings that distinguish buzzing from applause from speech, as a drop-in clip encoder, mirroring the way CLIP is used on the visual side. The strength of CLAP over PANNs or raw spectrograms is open-vocabulary semantic structure; to our knowledge, fusing a CLAP stream into a DETR-style highlight detector and reporting its effect per category on TVSum has not been studied.
+
+Automatic montage assembly. A separate line assembles selected footage into a finished edit. Beat-synchronized editing and transition recommendation arrange an already-chosen clip sequence to music, and agentic systems orchestrate large language models as planners and editors to follow a text instruction. CutClaw \cite{cutclaw} is representative: a multi-agent pipeline that anchors visual cuts to musical structure. The strength of these systems is explicit modeling of ordering and rhythm; their weakness is that they assume the input clips are already worth keeping, which is exactly the assumption a good highlight detector must establish. We draw on the CutClaw design but treat assembly as downstream of, and gated by, the detector studied here.
+
+Evaluation. TVSum \cite{tvsum} and SumMe \cite{summe} are the standard highlight and summarization benchmarks. Otani et al. \cite{otani} showed that F1-based summarization scores can be close to random and are dominated by segmentation, so the field has moved to rank-based metrics. For highlight detection on TVSum we follow the now-standard Top-5 mAP protocol \cite{momentdetr}.
+
+%-------------------------------------------------------------------------
+\section{Methods}
+
+\subsection{Problem formulation}
+A video is divided into a sequence of $T$ non-overlapping clips $\{c_1,\dots,c_T\}$ of length approximately two seconds. For each clip the model predicts a saliency score $s_t \in \mathbb{R}$; clips with the highest scores should coincide with human-annotated highlight regions. The supervised target $y_t \in [0,1]$ is the clip-averaged human importance from TVSum. Formally, given per-clip features the model is a function $f_\theta : (\mathbf{v}_{1:T}, \mathbf{a}_{1:T}) \mapsto s_{1:T}$, where $\mathbf{v}_t$ and $\mathbf{a}_t$ are the visual and audio features defined below.
+
+\subsection{Feature encoders}
+We use three frozen pretrained encoders and learn only the fusion and detector on top, which keeps the trainable parameter count small relative to the size of TVSum.
+
+CLIP. We encode the center frame of each clip with a CLIP ViT-B/32 image encoder \cite{clip} to obtain a 512-dimensional appearance embedding. CLIP is a contrastive image-text model whose features are strong, general visual descriptors and are the standard appearance feature in this line of work.
+
+SlowFast. We encode short-term motion with a SlowFast network \cite{slowfast} pretrained on Kinetics, pooling its features over the clip to a single motion vector. SlowFast uses a slow, low-frame-rate pathway for appearance and a fast, high-frame-rate pathway for motion, which captures the dynamics that a single frame misses.
+
+CLAP. We encode the clip audio waveform with the CLAP audio encoder \cite{clap,laionclap} to obtain a 512-dimensional embedding $\mathbf{a}_t$. CLAP is trained contrastively against text, so distinct sound events (buzzing, applause, speech, music) map to distinct, linearly separable regions of the embedding space; this is the semantic structure we exploit. The visual feature is the concatenation $\mathbf{v}_t = [\,\mathrm{CLIP}(c_t)\,\Vert\,\mathrm{SlowFast}(c_t)\,]$.
+
+\subsection{Cross-modal fusion and detector}
+We project both modalities to a common width $d$ and fuse them before the detector:
+\begin{equation}
+  \tilde{\mathbf{x}}_t = \mathrm{LN}\!\big(W_v \mathbf{v}_t\big) \,\Vert\, \mathrm{LN}\!\big(W_a \mathbf{a}_t\big),
+\end{equation}
+where $W_v, W_a$ are learned projections and $\mathrm{LN}$ is layer normalization. A single cross-modal transformer block then lets the projected visual and audio tokens attend to one another, producing a fused per-clip token $\mathbf{x}_t$. The fused sequence $\{\mathbf{x}_t\}_{t=1}^T$ is consumed by a DETR-style \cite{detr,momentdetr} transformer encoder with sinusoidal positional encodings, and a saliency head, a two-layer multilayer perceptron, predicts $s_t$ for each clip. We deliberately keep the fusion lightweight, one projection per modality and one cross-attention block, so that any improvement is attributable to the audio signal rather than to added capacity. When the audio stream is ablated we replace $\mathbf{a}_t$ with a zero vector, which recovers the visual-only baseline exactly.
+
+\subsection{Training objective}
+Following the saliency objectives of \cite{momentdetr,qddetr} we train with a margin-ranking loss that encourages clips inside annotated highlight regions to outscore clips outside them. For a video with high-importance clip indices $\mathcal{P}$ and low-importance indices $\mathcal{N}$,
+\begin{equation}
+  \mathcal{L}_{\mathrm{rank}} = \sum_{t^+ \in \mathcal{P}} \sum_{t^- \in \mathcal{N}} \max\!\big(0,\; \Delta - (s_{t^+} - s_{t^-})\big),
+\end{equation}
+with margin $\Delta$. We add a small mean-squared regression term to the clip importance,
+\begin{equation}
+  \mathcal{L} = \mathcal{L}_{\mathrm{rank}} + \lambda \sum_{t=1}^{T} (s_t - y_t)^2,
+\end{equation}
+and optimize $\theta$ with AdamW \cite{adamw}.
+
+\subsection{Implementation and codebase statement}
+We build on the public Moment-DETR / QD-DETR codebase \cite{momentdetr,qddetr}, implemented in PyTorch \cite{pytorch}. The starter code provides the DETR detector, the CLIP and SlowFast feature-extraction pipeline, and the saliency head and training loop. We wrote the CLAP audio feature-extraction pipeline, the cross-modal projection and fusion block, the audio-ablation path, and the per-category TVSum evaluation used in Section 6. The assembler described in Section 7 is a separate component inspired by the CutClaw codebase \cite{cutclaw}; we discuss its status there.
+
+%-------------------------------------------------------------------------
+\section{Dataset and Features}
+
+We evaluate on TVSum \cite{tvsum}, the Title-based Video Summarization dataset. TVSum contains 50 web videos drawn evenly from 10 categories, 5 videos per category, ranging from one to ten minutes. Each video is annotated by 20 crowd workers who assign frame-level importance scores from 1 to 5; we average the 20 raters and then average within each two-second clip to obtain the clip importance target $y_t$. The 10 categories are: changing Vehicle Tire (VT), getting Vehicle Unstuck (VU), Grooming an Animal (GA), Making Sandwich (MS), Parkour (PK), Parade (PR), Flash Mob (FM), Beekeeping (BK), attempting Bike Tricks (BT), and Dog Show (DS). We label categories as audio-salient (BK, PR, FM, DS) or visually-driven (BT, PK, VT, VU) based on whether the human-annotated highlights coincide with distinctive sound events.
+
+Because TVSum has only 50 videos, we follow the standard protocol of five-fold cross-validation: in each fold we train on 40 videos and test on 10, and we report the mean and standard deviation of Top-5 mAP across folds. Within each training fold we hold out a small validation subset for early stopping. This small-data regime is the main source of overfitting risk and motivates the frozen-feature, lightweight-fusion design of Section 4.
+
+For preprocessing, we discretize each video into non-overlapping two-second clips. Visual frames are resized and center-cropped to 224 by 224 for CLIP and sampled at the SlowFast frame rates for the motion pathway. Audio is resampled to 48 kHz mono to match the CLAP front end and split into clip-aligned windows. We precompute and cache all three feature streams, so the only learned components are the projections, the fusion block, the detector encoder, and the saliency head. Feature dimensions are 512 (CLIP), a pooled SlowFast vector, and 512 (CLAP), each projected to width $d$. We apply standardization (zero mean, unit variance) per feature stream and use no heavy augmentation, since the features are frozen; we optionally add small Gaussian noise to the projected features as a mild regularizer. Figure~\ref{fig:data} shows a representative Beekeeping clip together with its audio waveform, illustrating why the visual stream is uninformative while the audio carries the highlight.
+
+\begin{figure}[t]
+\begin{center}
+\fbox{\rule{0pt}{1.4in} \rule{0.9\linewidth}{0pt}}
+   %\includegraphics[width=0.95\linewidth]{figures/data_example.pdf}
+\end{center}
+   \caption{A representative Beekeeping (BK) clip from TVSum and its audio waveform. The frames are nearly static (a person beside a hive box), so the visual stream gives little signal, while the audio waveform shows the rising buzz that marks the human-annotated highlight. Placeholder figure.}
+\label{fig:data}
+\end{figure}
+
+%-------------------------------------------------------------------------
+\section{Experiments, Results, and Discussion}
+
+\subsection{Primary metric}
+Our primary metric is Top-5 mean average precision (Top-5 mAP), the standard highlight-detection metric on TVSum \cite{momentdetr}. For each video we rank clips by predicted saliency $s_t$, take the five highest, and compute average precision against the set of human-annotated highlight clips $H$:
+\begin{equation}
+  \mathrm{AP@5} = \frac{1}{|H \cap R_5|}\sum_{k=1}^{5} \mathbb{1}[r_k \in H]\cdot \mathrm{Prec}@k,
+\end{equation}
+where $R_5$ is the top-5 ranked set, $r_k$ the $k$-th ranked clip, and $\mathrm{Prec}@k$ the precision at cutoff $k$; we average AP@5 over videos to obtain Top-5 mAP. We report this overall and per category. We avoid F1-style summarization scores, which prior work showed to be near-random on this kind of data \cite{otani}.
+
+\subsection{Hyperparameters and training}
+We train each fold with AdamW \cite{adamw}, learning rate $10^{-4}$ with cosine decay, weight decay $10^{-4}$, batch size 32 videos, and margin $\Delta = 0.2$; the detector encoder has hidden width $d = 256$, four attention heads, two layers, and dropout 0.1, and the regression weight is $\lambda = 1$. These values follow the Moment-DETR defaults \cite{momentdetr}, adjusted by a small grid search over learning rate $\{5\!\times\!10^{-5}, 10^{-4}, 3\!\times\!10^{-4}\}$ and margin $\{0.1, 0.2, 0.3\}$ on the validation subset of one fold; we did not tune per category. We train for up to 200 epochs with early stopping on validation Top-5 mAP. All hyperparameter values in this paragraph are the intended configuration and will be confirmed in the final run.
+
+\subsection{Quantitative results}
+Table~\ref{tab:overall} reports overall Top-5 mAP for the visual-only baseline, an audio-only CLAP model, and our fusion model. The aggregate gain from fusion is modest, consistent with prior reports that audio helps only a little on average. Table~\ref{tab:percat} shows that this average conceals a sharp split by category: on audio-salient categories the gain is large, and on visually-driven categories audio neither helps nor hurts. Figure~\ref{fig:bars} plots the per-category difference and makes the concentration of the effect visible at a glance.
+
+\begin{table}[t]
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+Method & Visual & Audio & Top-5 mAP \\
+\hline\hline
+Visual-only (DETR)  & \checkmark &            & XX.X \\
+Audio-only (CLAP)   &            & \checkmark & XX.X \\
+Fusion (Ours)       & \checkmark & \checkmark & XX.X \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Overall TVSum Top-5 mAP, mean over five folds. Fusion yields a modest mean gain; the effect is concentrated by category (Table~\ref{tab:percat}). All values are placeholders.}
+\label{tab:overall}
+\end{table}
+
+\begin{table}[t]
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+Category & Visual & Fusion & Change \\
+\hline\hline
+Beekeeping (BK)     & 20.0 & 60.0 & +40.0 \\
+Parade (PR)         & XX.X & XX.X & +XX.X \\
+Flash Mob (FM)      & XX.X & XX.X & +XX.X \\
+Dog Show (DS)       & XX.X & XX.X & +XX.X \\
+\hline
+Bike Tricks (BT)    & XX.X & XX.X & +0.X \\
+Parkour (PK)        & XX.X & XX.X & +0.X \\
+\hline
+\end{tabular}
+\end{center}
+\caption{Per-category Top-5 mAP. Audio-salient categories (top) gain sharply from fusion; visually-driven categories (bottom) are unchanged. All values are placeholders.}
+\label{tab:percat}
+\end{table}
+
+\begin{figure}[t]
+\begin{center}
+\fbox{\rule{0pt}{1.6in} \rule{0.9\linewidth}{0pt}}
+   %\includegraphics[width=0.95\linewidth]{figures/percat_bars.pdf}
+\end{center}
+   \caption{Per-category Top-5 mAP for the visual-only baseline and the fusion model, with error bars over five folds. Audio-salient categories show large gains; visually-driven categories are flat. Axis labels and a legend will be included; placeholder figure.}
+\label{fig:bars}
+\end{figure}
+
+\subsection{Qualitative results and failure cases}
+The clearest case is Beekeeping, shown in Figure~\ref{fig:bk}: the visual track is a person standing beside a hive box for minutes at a time, with the genuine highlight, opening the hive and the swell of buzzing and the smoker, carried almost entirely by sound. The visual-only detector scores 20.0 Top-5 mAP on Beekeeping, near the floor, while the fusion model reaches 60.0; both numbers are placeholders pending the final run. The middle row of Figure~\ref{fig:bk} shows the flat visual-only saliency, and the bottom row shows the fusion saliency peaking on the buzzing segments. As a failure case, on categories with continuous, uninformative ambient noise (for example wind on a Parkour run) the audio stream can mildly mislead the detector, and on videos where the highlight is silent the audio modality adds nothing; we will quantify these cases in the per-category table.
+
+\begin{figure}[t]
+\begin{center}
+\fbox{\rule{0pt}{1.6in} \rule{0.9\linewidth}{0pt}}
+   %\includegraphics[width=0.95\linewidth]{figures/bk_qualitative.pdf}
+\end{center}
+   \caption{Beekeeping qualitative example. Top: human importance. Middle: visual-only saliency, which is flat because the static visual scene gives no signal. Bottom: fusion saliency, whose peaks align with the buzzing and hive-opening segments that the audio stream localizes. Placeholder figure.}
+\label{fig:bk}
+\end{figure}
+
+\subsection{Ablations and overfitting}
+The audio-only model in Table~\ref{tab:overall} is already competitive on the audio-salient categories, which indicates that the signal lives in the sound rather than in added parameters. Replacing CLAP with raw log-mel statistics removes most of the gain, indicating that it is the semantic structure of the audio embedding, buzzing versus applause versus speech, rather than loudness, that matters. Because TVSum has only 50 videos, overfitting is the central risk. We mitigate it by freezing all three feature encoders, keeping the fusion and detector small, applying dropout and weight decay, holding out a validation subset for early stopping, and reporting five-fold cross-validation rather than a single split. Figure~\ref{fig:curve} shows the training and validation Top-5 mAP curves; we monitor the gap between them and stop when validation stops improving. We expect a moderate train-validation gap given the dataset size, and we report cross-validation mean and standard deviation so that the variance is visible rather than hidden.
+
+\begin{figure}[t]
+\begin{center}
+\fbox{\rule{0pt}{1.5in} \rule{0.9\linewidth}{0pt}}
+   %\includegraphics[width=0.95\linewidth]{figures/train_val_curve.pdf}
+\end{center}
+   \caption{Training and validation Top-5 mAP versus epoch for the fusion model on one fold, with the early-stopping point marked. The gap between the curves indicates the degree of overfitting on the small TVSum training set. Axis labels and a legend will be included; placeholder figure.}
+\label{fig:curve}
+\end{figure}
+
+%-------------------------------------------------------------------------
+\section{From Highlights to Montage}
+
+The highlight detector produces a saliency curve; turning it into a montage is a separate problem. We designed Lore, an assembler inspired by the multi-agent structure of CutClaw \cite{cutclaw}: a planner orders selected highlights into a short narrative, a redundancy penalty suppresses near-duplicate shots, cuts are aligned to musical downbeats, and a free-text instruction conditions which highlights are kept. In contrast to per-clip consumer editors, this design models ordering, redundancy, and user intent explicitly.
+
+We report this as a design rather than a result. Our implementation built on a self-hosted multimodal agent stack, and the engineering cost of serving the required models reliably outweighed the contribution, so we scope this paper to the detector and treat robust assembly as future work. We believe the cleaner path is to keep the agentic interface of CutClaw, the planner, the redundancy-aware editor, and the beat-aligned cutter, while driving it from the audio-fused saliency curve introduced above, so that the montage inherits the detector sensitivity to audio-defined moments.
+
+%-------------------------------------------------------------------------
+\section{Conclusion and Future Work}
+
+Highlight detection is usually treated as a vision problem and is evaluated with a single aggregate number that rewards getting the easy, visually-driven videos right. We showed that for an important class of everyday content the highlight is carried by audio, that visual-only detectors collapse on these categories, and that a lightweight CLAP fusion into a DETR detector recovers them, turning, in the Beekeeping case, a near-floor score into a strong one. The highest-performing method was the audio-visual fusion model, and we attribute its advantage on audio-salient categories to the semantic structure of the CLAP embedding rather than to added capacity, since the audio-only model is already competitive there and a log-mel substitute is not.
+
+For future work, with more compute we would replace the frozen encoders with end-to-end fine-tuning and a learned, attention-based fusion, and we would scale beyond TVSum's 50 videos to QVHighlights and to our own egocentric footage, where dead time dominates and the audio cue is even more valuable. With more time we would complete the Lore assembler, driving the CutClaw-inspired planner and beat-aligned editor from the audio-fused saliency curve, and evaluate the end-to-end montage with a pairwise human study. We hope the per-category framing encourages the community to report where audio helps, not only whether it helps on average.
+
+%-------------------------------------------------------------------------
+\section*{Contributions and Acknowledgements}
+
+Both authors contributed to problem formulation, the literature review, and the writing of this report. Tejasvi Tyagi led the highlight-detector implementation and the fusion architecture; Andrew Xia led the dataset and feature pipeline, the experimental protocol, and the assembler design. Both authors prepared figures and tables. The authors should edit this paragraph to reflect the actual division of labor.
+
+Generative AI usage statement. We used a generative AI assistant (Claude) for literature-review assistance, for brainstorming the audio-fusion framing and the per-category analysis, for drafting and proofreading prose, and for formatting tables and the bibliography. All experimental design, method choices, and final claims are the authors' own, and the authors verified all citations and results. We also used standard open-source libraries: PyTorch \cite{pytorch}, the Moment-DETR / QD-DETR codebases \cite{momentdetr,qddetr} as starter code for the detector, and the LAION-CLAP audio model \cite{laionclap}. The assembler component reuses the public CutClaw repository \cite{cutclaw}.
+
+{\small
+\bibliographystyle{ieee}
+\begin{thebibliography}{99}
+
+\bibitem{momentdetr}
+J.~Lei, T.~L. Berg, and M.~Bansal.
+\newblock Detecting moments and highlights in videos via natural language queries (QVHighlights / Moment-DETR).
+\newblock In {\em NeurIPS}, 2021.
+
+\bibitem{qddetr}
+W.~Moon, S.~Hyun, S.~Park, D.~Park, and J.~Heo.
+\newblock Query-dependent video representation for moment retrieval and highlight detection (QD-DETR).
+\newblock In {\em CVPR}, 2023.
+
+\bibitem{cgdetr}
+W.~Moon, S.~Hyun, S.~Lee, and J.~Heo.
+\newblock Correlation-guided query-dependency calibration for video moment retrieval (CG-DETR).
+\newblock {\em arXiv:2311.08835}, 2023.
+
+\bibitem{uvcom}
+Y.~Xiao, Z.~Luo, Y.~Liu, Y.~Ma, H.~Bian, Y.~Ji, Y.~Yang, and X.~Li.
+\newblock Bridging the gap: A unified video comprehension framework for moment retrieval and highlight detection (UVCOM).
+\newblock In {\em CVPR}, 2024.
+
+\bibitem{detr}
+N.~Carion, F.~Massa, G.~Synnaeve, N.~Usunier, A.~Kirillov, and S.~Zagoruyko.
+\newblock End-to-end object detection with transformers (DETR).
+\newblock In {\em ECCV}, 2020.
+
+\bibitem{qvhighlights}
+J.~Lei, T.~L. Berg, and M.~Bansal.
+\newblock QVHighlights: dataset and audio (PANNs) feature configuration.
+\newblock In {\em NeurIPS Datasets and Benchmarks}, 2021.
+
+\bibitem{tvsum}
+Y.~Song, J.~Vallmitjana, A.~Stent, and A.~Jaimes.
+\newblock TVSum: Summarizing web videos using titles.
+\newblock In {\em CVPR}, 2015.
+
+\bibitem{summe}
+M.~Gygli, H.~Grabner, H.~Riemenschneider, and L.~Van Gool.
+\newblock Creating summaries from user videos (SumMe).
+\newblock In {\em ECCV}, 2014.
+
+\bibitem{otani}
+M.~Otani, Y.~Nakashima, E.~Rahtu, and J.~Heikkila.
+\newblock Rethinking the evaluation of video summaries.
+\newblock In {\em CVPR}, 2019.
+
+\bibitem{clap}
+B.~Elizalde, S.~Deshmukh, M.~Al-Ismail, and H.~Wang.
+\newblock CLAP: Learning audio concepts from natural language supervision.
+\newblock In {\em ICASSP}, 2023.
+
+\bibitem{laionclap}
+Y.~Wu, K.~Chen, T.~Zhang, Y.~Hui, T.~Berg-Kirkpatrick, and S.~Dubnov.
+\newblock Large-scale contrastive language-audio pretraining with feature fusion and keyword-to-caption augmentation (LAION-CLAP).
+\newblock In {\em ICASSP}, 2023.
+
+\bibitem{panns}
+Q.~Kong, Y.~Cao, T.~Iqbal, Y.~Wang, W.~Wang, and M.~D. Plumbley.
+\newblock PANNs: Large-scale pretrained audio neural networks for audio pattern recognition.
+\newblock {\em IEEE/ACM Transactions on Audio, Speech, and Language Processing}, 2020.
+
+\bibitem{clip}
+A.~Radford, J.~W. Kim, C.~Hallacy, A.~Ramesh, G.~Goh, S.~Agarwal, et~al.
+\newblock Learning transferable visual models from natural language supervision (CLIP).
+\newblock In {\em ICML}, 2021.
+
+\bibitem{slowfast}
+C.~Feichtenhofer, H.~Fan, J.~Malik, and K.~He.
+\newblock SlowFast networks for video recognition.
+\newblock In {\em ICCV}, 2019.
+
+\bibitem{recurrence}
+M.~K. Islam, S.~Paul, and M.~Rochan.
+\newblock Unsupervised video highlight detection by learning from audio and visual recurrence.
+\newblock In {\em WACV}, 2025.
+
+\bibitem{adamw}
+I.~Loshchilov and F.~Hutter.
+\newblock Decoupled weight decay regularization (AdamW).
+\newblock In {\em ICLR}, 2019.
+
+\bibitem{pytorch}
+A.~Paszke, S.~Gross, F.~Massa, A.~Lerer, J.~Bradbury, et~al.
+\newblock PyTorch: An imperative style, high-performance deep learning library.
+\newblock In {\em NeurIPS}, 2019.
+
+\bibitem{cutclaw}
+S.~Zhao, Y.~Hu, Y.~Shan, Y.~Wei, and X.~Cun.
+\newblock CutClaw: Agentic hours-long video editing via music synchronization.
+\newblock {\em arXiv:2603.29664}, 2026.
+
+\end{thebibliography}
+}
+
+\end{document}

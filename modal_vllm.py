@@ -15,13 +15,16 @@ VLLM_KEY = "lore-vllm-key"     # simple bearer key for the endpoint
 
 app = modal.App("lore-qwen3vl")
 
-# vLLM >= 0.11 is required for Qwen3-VL support.
+# CUDA-devel base (includes nvcc) — vLLM JIT-compiles kernels at startup and needs the
+# toolkit; the slim image only had CUDA runtime libs (cause of the startup failures).
+# 12.8 matches vLLM's bundled torch cu128. vLLM >= 0.11 required for Qwen3-VL.
 image = (
-    modal.Image.debian_slim(python_version="3.12")
-    .pip_install("vllm>=0.11.0", "huggingface_hub[hf_transfer]", "qwen-vl-utils")
-    # Force Triton fused-MoE: the default flashinfer CUTLASS MoE JIT-compiles at startup
-    # (needs nvcc, absent from the wheel) and hung for hours. Triton needs no nvcc.
-    .env({"HF_HUB_ENABLE_HF_TRANSFER": "1", "VLLM_USE_V1": "1",
+    modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu22.04", add_python="3.12")
+    .apt_install("git")
+    .pip_install("vllm>=0.11.0", "huggingface_hub[hf_transfer]", "qwen-vl-utils", "ninja")
+    .run_commands("nvcc --version | tail -2")   # fail the BUILD (cheap) if nvcc is missing
+    .env({"CUDA_HOME": "/usr/local/cuda",
+          "HF_HUB_ENABLE_HF_TRANSFER": "1", "VLLM_USE_V1": "1",
           "VLLM_USE_FLASHINFER_MOE_FP16": "0", "VLLM_USE_FLASHINFER_MOE_FP8": "0"})
 )
 
